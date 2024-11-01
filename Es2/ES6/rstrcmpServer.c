@@ -1,4 +1,4 @@
-// gcc -g -o ./eseS rstrlenServer.c rxb.c rxb.h utils.c utils.h
+// gcc -g -o ./eseS rstrcmpServer.c rxb.c rxb.h utils.c utils.h
 #include <stdint.h>
 #define _POSIX_C_SOURCE 200809L
 #include <errno.h>
@@ -17,7 +17,6 @@ int main(int argc, char *argv[])
 {
 	int sd, err;
     int optval = 1;
-	int flag = 1;
 	char *service;
 	struct addrinfo hints, *res;
 
@@ -73,12 +72,14 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	while (flag == 1) {
+	while (1) {
 		rxb_t rxb;
 		int ns;
 		char str1[1024];
+        char str2[1024];
 		
         size_t str1_len;
+		size_t str2_len;
 
 		ns = accept(sd, NULL, NULL); //SOKET
 		if (ns < 0) {
@@ -95,6 +96,9 @@ int main(int argc, char *argv[])
 		memset(str1, 0, sizeof(str1));
 		str1_len = sizeof(str1)-1;
 
+        /* Inizializzo a zero il buffer per il str2 */
+		memset(str2, 0, sizeof(str2));
+		str2_len = sizeof(str2)-1;
 
 		/* Chiamo rxb_readline */
 		err = rxb_readline(&rxb, ns, str1, &str1_len);
@@ -111,18 +115,22 @@ int main(int argc, char *argv[])
 		}
 #endif
 
-		int nn = strcmp(str1,"fine"); // NON MI FIDO DI STRCMP ? piu per debug che altro
-		printf("Mi è arrivata come stringa: %s \n",str1); 
+        /* Chiamo rxb_readline */
+		err = rxb_readline(&rxb, ns, str2, &str2_len);
+		if (err < 0) {
+			perror("rxb_readline");
+			exit(EXIT_FAILURE);
+		}
 
-		/*PARTE ALGORITMICA DEL SERVER DOPO AVER RICEVUTO QUALCOSA*/
-		if(nn != 0){
-            int num = 0;
-			char stringa[250];
-
-			num = strlen(str1);
-			sprintf(stringa, "%d", num);  // atoi("256") = 256 ...  per viceversa
-
-			err = write_all(ns, stringa, strlen(stringa));
+#ifdef USE_LIBUNISTRING
+		/* Controllo validità UTF-8 */
+		if (u8_check((uint8_t *)str2, str2_len) != NULL) {
+			fprintf(stderr, "Invalid input\n");
+			exit(EXIT_FAILURE);
+		}
+#endif
+		if(strcmp(str1,str2) == 0){
+            err = write_all(ns, "SI", strlen("SI"));
             if (err < 0) {
                 fputs("Errore write!1", stderr);
                 exit(EXIT_FAILURE);
@@ -134,8 +142,17 @@ int main(int argc, char *argv[])
                 exit(EXIT_FAILURE);
             }
         }else{
-            flag = 0;
-			printf("Comunicazione terminata su richiesta del client\n");  
+            err = write_all(ns, "NO", strlen("NO"));
+            if (err < 0) {
+                fputs("Errore write!3", stderr);
+                exit(EXIT_FAILURE);
+            }
+
+            err = write(ns, "\n", 1);
+            if (err < 0) {
+                fputs("Errore write!4", stderr);
+                exit(EXIT_FAILURE);
+            }     
         }
 		rxb_destroy(&rxb);
 		close(ns);
