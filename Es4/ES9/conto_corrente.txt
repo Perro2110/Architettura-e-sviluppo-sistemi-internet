@@ -1,0 +1,5 @@
+50, 20-12-32, pollame, ecc..
+50, 18-12-32, gallo, ecc..
+60, 20-12-32, pollame, ecc..
+50, 20-12-32, gallo, ecc..
+45, 19-12-32, pollame, ecc..

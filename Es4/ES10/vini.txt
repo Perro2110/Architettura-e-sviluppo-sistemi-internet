@@ -1,0 +1,11 @@
+nome, numero di bottiglie disponibili, annata, costo, ecc.
+sangiovese, 100, 2019, 10
+sangiovese, 100, 2018, 12
+sangiovese, 100, 2018, 15
+sangiovese, 100, 2018, 1
+freschello, 50, 2019, 15
+sangiovese, 100, 2017, 10
+novello, 100, 2019, 10
+novello, 100, 2018, 12
+passerina, 100, 2019, 10
+passerina, 100, 2018, 12
