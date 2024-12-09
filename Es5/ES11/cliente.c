@@ -103,6 +103,10 @@ int main(int argc, char **argv)
 
 
 		// Ricezzione risposta e stampa dal server
+		// buffer string:
+		nread = read(sd, buffer, sizeof(buffer));
+		err = write_all(STDOUT_FILENO, buffer, nread);
+		// buffer media:
 		nread = read(sd, buffer, sizeof(buffer));
 		err = write_all(STDOUT_FILENO, buffer, nread);
 
