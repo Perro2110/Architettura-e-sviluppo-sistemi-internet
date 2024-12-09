@@ -8,6 +8,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <signal.h>
+#include <sys/wait.h> // Per waitpid
 #include "rxb.h"
 #include "utils.h"
 
@@ -15,131 +16,165 @@
 // argv[0] argv[1]
 int main(int argc, char *argv[])
 {
-	int sd, err;
-    int optval = 1;
-	int flag = 1;
-	char *service;
+	int sd;			// Socket descriptor principale
+	int err;		// Variabile per gestione errori
+	int optval = 1; // Valore per setsockopt
+	char *service;	// Porta del servizio
 	struct addrinfo hints, *res;
 
 	/* Controllo argomenti */
-	if (argc != 2) {
+	if (argc != 2)
+	{
 		fprintf(stderr, "Usage:\n\t%s port\n", argv[0]);
 		exit(EXIT_FAILURE);
 	}
 
-	/* Per ripristinare un comportamento sensato delle socket */
+	/*
+	 * Ignoriamo SIGPIPE per evitare che il processo termini se il client
+	 * chiude la connessione mentre stiamo scrivendo
+	 */
 	signal(SIGPIPE, SIG_IGN);
 
-	service = argv[1];
+	service = argv[1]; // Porta specificata come argomento
 
+	/* Preparazione struttura hints per getaddrinfo */
 	memset(&hints, 0, sizeof(hints));
-	hints.ai_family = AF_UNSPEC; /* IPv4 o IPv6 */
-	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_flags = AI_PASSIVE; //IN SERVER PERCHE NON CHIEDIAMO LA RISOLUZIONE DI UN NOME MA LA PREPARAZIONE DELLA STRUTTURA DA PASSARE A BIND
-    
+	hints.ai_family = AF_UNSPEC;	 // Accetta sia IPv4 che IPv6
+	hints.ai_socktype = SOCK_STREAM; // TCP
+	hints.ai_flags = AI_PASSIVE;	 // Per server: bind su tutte le interfacce
+
+	/* Otteniamo le informazioni sull'indirizzo */
 	err = getaddrinfo(NULL, service, &hints, &res);
-	
-    if (err != 0) {
-		fprintf(stderr, "Error: %s\n", gai_strerror(err));
+	if (err != 0)
+	{
+		fprintf(stderr, "Errore getaddrinfo: %s\n", gai_strerror(err));
 		exit(EXIT_FAILURE);
 	}
 
-	sd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);	
-    if (sd < 0) {
-		perror("socket");
+	/* Creazione socket */
+	sd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+	if (sd < 0)
+	{
+		perror("Errore creazione socket");
 		exit(EXIT_FAILURE);
 	}
 
-    err = setsockopt(sd, 
-                     SOL_SOCKET,    // Livello dell'opzione
-                     SO_REUSEPORT,  // Opzione da impostare
-                     &optval,       // Puntatore al valore
-                     sizeof(optval));
-
-	if (err < 0) {
-		perror("setsockopt");
+	/*
+	 * Impostiamo SO_REUSEPORT per permettere il riutilizzo immediato
+	 * della porta dopo la chiusura del server
+	 */
+	err = setsockopt(sd, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
+	if (err < 0)
+	{
+		perror("Errore setsockopt");
 		exit(EXIT_FAILURE);
 	}
 
+	/* Associamo il socket all'indirizzo */
 	err = bind(sd, res->ai_addr, res->ai_addrlen);
-	if (err < 0) {
-		perror("bind");
+	if (err < 0)
+	{
+		perror("Errore bind");
 		exit(EXIT_FAILURE);
 	}
 
+	/* Mettiamo il socket in ascolto */
 	err = listen(sd, SOMAXCONN);
-	if (err < 0) {
-		perror("listen");
+	if (err < 0)
+	{
+		perror("Errore listen");
 		exit(EXIT_FAILURE);
 	}
 
-	while (flag == 1) {
-		rxb_t rxb;
-		int ns;
-		char str1[1024];
-		
-        size_t str1_len;
+	printf("Server in ascolto sulla porta %s\n", service);
 
-		ns = accept(sd, NULL, NULL); //SOKET
-		if (ns < 0) {
-			if (errno == EINTR)
+	/* Loop principale del server */
+	while (1)
+	{
+		rxb_t rxb;		 // Buffer per la lettura
+		int ns;			 // Socket per la nuova connessione
+		char str1[1024]; // Buffer per la stringa ricevuta
+		size_t str1_len; // Lunghezza della stringa
+
+		/* Accettiamo una nuova connessione */
+		ns = accept(sd, NULL, NULL);
+		if (ns < 0)
+		{
+			if (errno == EINTR) // Interruzione da segnale
 				continue;
-			perror("accept");
+			perror("Errore accept");
 			exit(EXIT_FAILURE);
 		}
 
-		/* Alloco la memoria per il buffer rxb */
-		rxb_init(&rxb, 64 * 1024);
-
-		/* Inizializzo a zero il buffer per il str1 */
-		memset(str1, 0, sizeof(str1));
-		str1_len = sizeof(str1)-1;
-
-
-		/* Chiamo rxb_readline */
-		err = rxb_readline(&rxb, ns, str1, &str1_len);
-		if (err < 0) {
-			perror("rxb_readline");
+		/* Creiamo un nuovo processo per gestire la connessione */
+		int pid = fork();
+		if (pid < 0)
+		{
+			perror("Errore fork");
 			exit(EXIT_FAILURE);
 		}
+		if (pid == 0) // Processo figlio
+		{
+			close(sd); // Il figlio non usa il socket di ascolto
 
-#ifdef USE_LIBUNISTRING
-		/* Controllo validità UTF-8 */
-		if (u8_check((uint8_t *)str1, str1_len) != NULL) {
-			fprintf(stderr, "Invalid input\n");
-			exit(EXIT_FAILURE);
+			/* Loop di gestione della connessione client */
+			while (1)
+			{
+				/* Inizializzazione buffer di lettura */
+				rxb_init(&rxb, 64 * 1024);
+				memset(str1, 0, sizeof(str1));
+				str1_len = sizeof(str1) - 1;
+
+				/* Leggiamo una linea dal client */
+				err = rxb_readline(&rxb, ns, str1, &str1_len);
+				if (err < 0)
+				{
+					perror("Errore lettura");
+					exit(EXIT_FAILURE);
+				}
+
+				/* Controlliamo se il client vuole terminare */
+				int nn = strcmp(str1, "fine");
+				printf("Ricevuto dal client: %s\n", str1);
+
+				if (nn != 0) // Se non è "fine"
+				{
+					/* Calcoliamo la lunghezza della stringa */
+					int num = strlen(str1);
+					char stringa[250];
+					sprintf(stringa, "%d", num);
+
+					/* Inviamo la lunghezza al client */
+					err = write_all(ns, stringa, strlen(stringa));
+					if (err < 0)
+					{
+						fprintf(stderr, "Errore invio lunghezza\n");
+						exit(EXIT_FAILURE);
+					}
+
+					/* Inviamo il carattere newline */
+					err = write(ns, "\n", 1);
+					if (err < 0)
+					{
+						fprintf(stderr, "Errore invio newline\n");
+						exit(EXIT_FAILURE);
+					}
+				}
+				else // Se riceviamo "fine"
+				{
+					printf("Client ha richiesto la chiusura\n");
+					rxb_destroy(&rxb);
+					close(ns);
+					exit(0); // Terminiamo il processo figlio
+				}
+				/* Pulizia buffer di lettura */
+				rxb_destroy(&rxb);
+			}
 		}
-#endif
-
-		int nn = strcmp(str1,"fine"); // NON MI FIDO DI STRCMP ? piu per debug che altro
-		printf("Mi è arrivata come stringa: %s \n",str1); 
-
-		/*PARTE ALGORITMICA DEL SERVER DOPO AVER RICEVUTO QUALCOSA*/
-		if(nn != 0){
-            int num = 0;
-			char stringa[250];
-
-			num = strlen(str1);
-			sprintf(stringa, "%d", num);  // atoi("256") = 256 ...  per viceversa
-
-			err = write_all(ns, stringa, strlen(stringa));
-            if (err < 0) {
-                fputs("Errore write!1", stderr);
-                exit(EXIT_FAILURE);
-            }
-
-            err = write(ns, "\n", 1);
-            if (err < 0) {
-                fputs("Errore write!2", stderr);
-                exit(EXIT_FAILURE);
-            }
-        }else{
-            flag = 0;
-			printf("Comunicazione terminata su richiesta del client\n");  
-        }
-		rxb_destroy(&rxb);
-		close(ns);
+		/* Processo padre */
+		close(ns); // Il padre chiude il socket della connessione
 	}
+	/* Chiusura socket principale (mai raggiunto nel codice attuale) */
 	close(sd);
 	return 0;
 }
