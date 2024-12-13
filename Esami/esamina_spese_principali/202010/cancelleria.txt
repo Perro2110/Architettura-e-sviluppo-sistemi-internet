@@ -1,0 +1,5 @@
+02,pollo,pollo
+04,pollo,pollo
+05,pollo,pollo
+01,pollo,pollo
+89,oikki,sdsad

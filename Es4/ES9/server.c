@@ -72,9 +72,9 @@ int main(int argc, char *argv[])
     int ns;
     char str1[1024];
     size_t str1_len;
-
+    int pid0;
     while (1)
-    {
+        {
         ns = accept(sd, NULL, NULL);
         if (ns < 0)
         {
@@ -83,7 +83,14 @@ int main(int argc, char *argv[])
             perror("accept");
             exit(EXIT_FAILURE);
         }
-        while (1)
+        pid0 = fork();
+        if (pid0 == -1)
+        {
+            perror("fork");
+            exit(EXIT_FAILURE);
+        }
+        else if (pid0  == 0) 
+            while (1)
         {
 
             rxb_init(&rxb, 64 * 1024);
@@ -187,15 +194,17 @@ int main(int argc, char *argv[])
                 // Attendiamo la terminazione dei processi figli
                 waitpid(pid1, NULL, 0);
                 waitpid(pid2, NULL, 0);
+                rxb_destroy(&rxb);
             }
             else
             {
-                flag = 0;
                 printf("Comunicazione terminata su richiesta del client\n");
+                close(ns);
+                return 0;
             }
         }
         close(ns);
-        rxb_destroy(&rxb);
+        
     }
     close(ns);
     close(sd);

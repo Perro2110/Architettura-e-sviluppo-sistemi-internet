@@ -1,0 +1,5 @@
+32,gallo90,giacominieditori,dispoinbile,ecc..
+40,gallo98,giacominieditori,esaurito,ecc..
+59,gallo90,giacominieditori,esaurito,ecc..
+66,gallo60,giacominieditori,dispoinbile,ecc..
+90.,gallo99,giacominieditori,dispoinbile,ecc..

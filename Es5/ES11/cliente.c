@@ -1,3 +1,4 @@
+// // gcc -g -o ./eseC client.c rxb.c rxb.h utils.c utils.h
 #define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
 #include <stdlib.h>
@@ -5,6 +6,7 @@
 #include <netdb.h>
 #include <unistd.h>
 #include "utils.h"
+#include "rxb.h"
 
 /* L'applicazione deve avere la seguente interfaccia: */
 /* 	client hostname   porta*/
@@ -13,6 +15,9 @@ int main(int argc, char **argv)
 {
 	int sd, err, nread;
 	uint8_t buffer[4096];
+	size_t buffer_len;
+	rxb_t rxb;
+
 	char insUtente[4096];
 	struct addrinfo hints, *res, *ptr;
 
@@ -53,11 +58,12 @@ int main(int argc, char **argv)
 	}
 
 	freeaddrinfo(res);
+	rxb_init(&rxb, 64 * 1024);
 
 	while (1)
 	{
         /** VINO */
-		printf("Inserisci stringa da mandare NOMEREGIONE, 'fine' per terminare\n");
+		printf("\n Inserisci stringa da mandare NOMEREGIONE, 'fine' per terminare\n");
 		scanf("%s", &insUtente);
 
 		/* MANDO e scrivo string in formato UTF-8 */
@@ -103,26 +109,38 @@ int main(int argc, char **argv)
 
 
 		// Ricezzione risposta e stampa dal server
-		// buffer string:
-		nread = read(sd, buffer, sizeof(buffer));
-		err = write_all(STDOUT_FILENO, buffer, nread);
-		// buffer media:
-		nread = read(sd, buffer, sizeof(buffer));
-		err = write_all(STDOUT_FILENO, buffer, nread);
+		for(;;)
+        {
 
-		if (err < 0)
-		{
-			fputs("Errore write!", stderr);
-			exit(EXIT_FAILURE);
-		}
-		if (nread < 0)
-		{
-			fputs("Errore read!", stderr);
-			exit(EXIT_FAILURE);
-		}
+            memset(buffer, 0, sizeof(buffer));
+            buffer_len = sizeof(buffer) - 1;
+
+            if(rxb_readline(&rxb, sd, buffer, &buffer_len) < 0)
+            {
+                rxb_destroy(&rxb);
+                fprintf(stderr, "Connessione chiusa dal server\n");
+                close(sd);
+                exit(EXIT_FAILURE);
+            }
+
+#ifdef USE_LIBUNISTRING
+            if(u8_check((uint8_t *)buffer, buffer_len) != NULL)
+            {
+                fprintf(stderr, "Response is not valid UTF-8!\n");
+                close(sd);
+                exit(EXIT_FAILURE);
+            } 
+#endif
+
+            puts(buffer);
+
+            if(strcmp(buffer, "===fine===") == 0)
+            {
+                break;
+            }
+        }
 	}
-
+	rxb_destroy(&rxb);
 	close(sd);
-
 	return 0;
 }

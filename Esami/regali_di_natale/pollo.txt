@@ -1,0 +1,5 @@
+32,pollo90,giacominieditori,dispoinbile,ecc..
+40,pollo98,giacominieditori,esaurito,ecc..
+59,pollo90,giacominieditori,esaurito,ecc..
+66,pollo60,giacominieditori,dispoinbile,ecc..
+90.,pollo99,giacominieditori,dispoinbile,ecc..
