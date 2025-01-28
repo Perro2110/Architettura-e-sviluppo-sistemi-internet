@@ -1,10 +1,11 @@
+// 18.34 18.55
 import java.io.*;
 import java.net.*;
 
-public class regali_di_natale_client {
+public class verifica_compilazione_Main {
     public static void main(String[] args) {
         if (args.length != 2) {
-            System.err.println("Errore di argomenti");
+            System.err.println("Errore numero argomenti");
             System.exit(1);
         }
         try (Socket theSocket = new Socket(args[0], Integer.parseInt(args[1]))) {
@@ -13,9 +14,9 @@ public class regali_di_natale_client {
             BufferedWriter networkOut = new BufferedWriter(
                     new OutputStreamWriter(theSocket.getOutputStream(), "UTF-8"));
 
-            // mando al server
+            // MANDO SERVER:
             for (;;) {
-                System.out.println("Inserisci nome utente");
+                System.out.println("Inserire user, 'fine' terminare");
                 String nome = userIn.readLine();
                 networkOut.write(nome);
                 networkOut.newLine();
@@ -23,27 +24,26 @@ public class regali_di_natale_client {
                 if (nome.equals("fine"))
                     break;
 
-                System.out.println("Inserisci password utente");
-                String password = userIn.readLine();
-                networkOut.write(password);
+                System.out.println("Inserire nome progetto, 'fine' terminare");
+                String progetto = userIn.readLine();
+                networkOut.write(progetto);
                 networkOut.newLine();
                 networkOut.flush();
-                if (password.equals("fine"))
+                if (progetto.equals("fine"))
                     break;
 
-                System.out.println("Inserisci categoria utente");
-                String categoria = userIn.readLine();
-                networkOut.write(categoria);
+                System.out.println("Inserire nome aggiornamento, 'fine' terminare");
+                String aggiornamento = userIn.readLine();
+                networkOut.write(aggiornamento);
                 networkOut.newLine();
                 networkOut.flush();
-                if (categoria.equals("fine"))
+                if (aggiornamento.equals("fine"))
                     break;
-
-                // Lettura risultati
+                
                 String theLine;
-                while ((theLine = networkIn.readLine()) != null) {
-                    if (theLine.trim().equals("==fin=="))
-                        break;
+                while((theLine = networkIn.readLine())!=null){
+                    if(theLine.trim().equals("==fin=="))
+                       break;
                     System.out.println(theLine);
                 }
             }

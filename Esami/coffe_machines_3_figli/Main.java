@@ -1,10 +1,12 @@
+
+// 10.44 10:53
 import java.io.*;
 import java.net.*;
 
-public class regali_di_natale_client {
+public class Main {
     public static void main(String[] args) {
         if (args.length != 2) {
-            System.err.println("Errore di argomenti");
+            System.err.println("errore numero argomenti");
             System.exit(1);
         }
         try (Socket theSocket = new Socket(args[0], Integer.parseInt(args[1]))) {
@@ -15,7 +17,7 @@ public class regali_di_natale_client {
 
             // mando al server
             for (;;) {
-                System.out.println("Inserisci nome utente");
+                System.out.println("Inserire username, 'fine' per terminare ");
                 String nome = userIn.readLine();
                 networkOut.write(nome);
                 networkOut.newLine();
@@ -23,26 +25,26 @@ public class regali_di_natale_client {
                 if (nome.equals("fine"))
                     break;
 
-                System.out.println("Inserisci password utente");
-                String password = userIn.readLine();
-                networkOut.write(password);
+                System.out.println("Inserire password, 'fine' per terminare ");
+                String pass = userIn.readLine();
+                networkOut.write(pass);
                 networkOut.newLine();
                 networkOut.flush();
-                if (password.equals("fine"))
+                if (pass.equals("fine"))
                     break;
 
-                System.out.println("Inserisci categoria utente");
-                String categoria = userIn.readLine();
-                networkOut.write(categoria);
+                System.out.println("Inserire categoria, 'fine' per terminare ");
+                String cat = userIn.readLine();
+                networkOut.write(cat);
                 networkOut.newLine();
                 networkOut.flush();
-                if (categoria.equals("fine"))
+                if (cat.equals("fine"))
                     break;
 
-                // Lettura risultati
+                // leggo dal server
                 String theLine;
-                while ((theLine = networkIn.readLine()) != null) {
-                    if (theLine.trim().equals("==fin=="))
+                while((theLine = networkIn.readLine())!=null){
+                    if(theLine.trim().equals("==fin=="))
                         break;
                     System.out.println(theLine);
                 }
@@ -50,6 +52,7 @@ public class regali_di_natale_client {
             networkIn.close();
             networkOut.close();
             userIn.close();
+
         } catch (Exception e) {
             System.err.println(e.getMessage());
             e.printStackTrace();

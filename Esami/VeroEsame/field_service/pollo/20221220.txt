@@ -1,0 +1,20 @@
+4,table,chair,sofa,bed,desk
+5,red,blue,green,yellow,purple
+8,book,pen,pencil,eraser,notebook
+9,phone,laptop,tablet,monitor,keyboard
+10,sun,moon,star,planet,comet
+11,rain,snow,wind,storm,cloud
+14,cake,ice cream,chocolate,cookie,candy
+15,river,lake,ocean,sea,pond
+16,shirt,pants,jacket,hat,shoes
+17,forest,desert,mountain,beach,valley
+18,bread,cheese,milk,egg,butter
+19,camera,photo,video,tripod,lens
+20,coffee,tea,juice,soda,water
+12,music,dance,painting,writing,singing
+1,apple,banana,grape,orange,watermelon
+2,car,bike,truck,bus,train
+3,house,apartment,villa,cottage,condo
+13,math,science,history,geography,language
+6,cat,dog,fish,bird,hamster
+7,pizza,pasta,burger,salad,soup

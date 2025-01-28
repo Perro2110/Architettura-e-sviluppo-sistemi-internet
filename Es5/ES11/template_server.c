@@ -1,16 +1,25 @@
-#include <stdint.h>
 #define _POSIX_C_SOURCE 200809L
-#include <errno.h>
-#include <netdb.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <netdb.h>
 #include <unistd.h>
-#include <signal.h>
-#include "rxb.h"
 #include "utils.h"
+#include "rxb.h"
+
+#include <stdint.h>
+#include <errno.h>
+#include <signal.h>
 #include <sys/wait.h>
 #include <ctype.h>
+
+void sigchld_handler(int signo)
+{
+    int status;
+    (void)signo;
+    while (waitpid(-1, &status, WNOHANG) > 0)
+        continue;
+}
 
 // **** PARTE DI UTILIZZO DI buffer OPZIONALE****
 // Funzione che somma i numeri trovati in una stringa
@@ -44,6 +53,7 @@ int main(int argc, char *argv[])
     int flag = 1;
     char *service;
     struct addrinfo hints, *res;
+    struct sigaction sa;
 
     // Controllo argomenti linea di comando
     if (argc != 2)
@@ -54,6 +64,17 @@ int main(int argc, char *argv[])
 
     // Ignora SIGPIPE per evitare terminazione su write su socket chiuso
     signal(SIGPIPE, SIG_IGN);
+
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = SA_RESTART;
+    sa.sa_handler = sigchld_handler;
+    err = sigaction(SIGCHLD, &sa, NULL);
+    if (err < 0)
+    {
+        perror("sigaction");
+        exit(EXIT_FAILURE);
+    }
+
     service = argv[1];
 
     // Configurazione socket
@@ -133,6 +154,8 @@ int main(int argc, char *argv[])
         if (pid00 == 0)
         { // Processo figlio per gestire il client
             rxb_init(&rxb, 64 * 1024);
+            signal(SIGCHLD, SIG_DFL);
+
             while (1)
             {
                 // Lettura della REGIONE
@@ -159,11 +182,10 @@ int main(int argc, char *argv[])
 
                 if (strcmp(str1, "fine") != 0 && strcmp(str2, "fine") != 0)
                 {
-                    int pip1[2]; // pipe per sort -> head
-                    int pip2[2]; // pipe per head -> socket
+                    int pip1[2]; // pipe per sort -> head -> socket
 
                     // Creazione delle pipe
-                    if (pipe(pip1) < 0 || pipe(pip2) < 0)
+                    if (pipe(pip1) < 0)
                     {
                         perror("pipe");
                         exit(EXIT_FAILURE);
@@ -182,8 +204,7 @@ int main(int argc, char *argv[])
                         // - pip1[0]: non legge dalla prima pipe
                         // - pip2[0] e pip2[1]: non usa la seconda pipe
                         close(pip1[0]);
-                        close(pip2[0]);
-                        close(pip2[1]);
+                        close(ns);
 
                         // Redirige stdout sulla prima pipe:
                         // - Duplica pip1[1] su stdout (fd 1)
@@ -192,9 +213,9 @@ int main(int argc, char *argv[])
                         close(pip1[1]);
 
                         // Esegue sort sul file della regione
-                        char pollo[5000];
-                        sprintf(pollo, "%s.txt", str1);
-                        execlp("sort", "sort", pollo, NULL);
+                        char filename[5000];
+                        snprintf(filename, sizeof(filename), "%s.txt", str1);
+                        execlp("sort", "sort", "-n", "-r", filename, NULL);
                         perror("execlp sort");
                         exit(EXIT_FAILURE);
                     }
@@ -210,9 +231,7 @@ int main(int argc, char *argv[])
                     { // Secondo figlio (head)
                         // Chiude i file descriptor non necessari:
                         // - pip1[1]: non scrive sulla prima pipe
-                        // - pip2[0]: non legge dalla seconda pipe
                         close(pip1[1]);
-                        close(pip2[0]);
 
                         // Redirige stdin dalla prima pipe:
                         // - Duplica pip1[0] su stdin (fd 0)
@@ -223,8 +242,8 @@ int main(int argc, char *argv[])
                         // Redirige stdout sulla seconda pipe:
                         // - Duplica pip2[1] su stdout (fd 1)
                         // - Chiude l'originale pip2[1]
-                        dup2(pip2[1], STDOUT_FILENO);
-                        close(pip2[1]);
+                        dup2(ns, STDOUT_FILENO);
+                        close(ns);
 
                         // Esegue head con il numero di linee specificato
                         execlp("head", "head", "-n", str2, NULL);
@@ -238,49 +257,15 @@ int main(int argc, char *argv[])
                     // - pip2[1]: non SCRIVE sulla seconda pipe
                     close(pip1[0]);
                     close(pip1[1]);
-                    close(pip2[1]);
 
                     // Attende la terminazione dei processi figli
                     waitpid(pid1, NULL, 0);
                     waitpid(pid2, NULL, 0);
 
-                    // Legge dalla seconda pipe e scrive sul socket
-                    char buffer[4096];
-                    ssize_t bytes_read;
-                    int numero = 0;
-                    int el = atoi(str2);                // Converte la stringa in numero intero
-                    char bufferSupremoDellaMedia[4096]; // Buffer per la stringa finale con la media
-
-                    // Legge dal pipe e scrive sul socket
-                    while ((bytes_read = read(pip2[0], buffer, sizeof(buffer))) > 0)
-                    {
-                        // Scrive i dati sul socket
-                        ssize_t bytes_written = write_all(ns, buffer, bytes_read);
-                        if (bytes_written < 0)
-                        {
-                            perror("write to socket");
-                            break;
-                        }
-                        // Aggiunge newline
-                        write(ns, "\n", 1);
-
-                        // **** PARTE DI UTILIZZO DI buffer OPZIONALE****
-                        // Calcola e scrive la media
-                        numero = sum_numbers(buffer);
-                        sprintf(bufferSupremoDellaMedia, " %d\n", (numero / el));
-                        bytes_written = write_all(ns, bufferSupremoDellaMedia, strlen(bufferSupremoDellaMedia));
-                        if (bytes_written < 0)
-                        {
-                            perror("write to socket");
-                            break;
-                        }
-                        write(ns, "\n", 1);
-                    }
+                    // Scrivo ==fin== su socket
+                    write(ns, "\n", 1);
                     write_all(ns, "===fine===", sizeof("===fine===")); // mando segnale di fine comunicazione
                     write(ns, "\n", 1);
-                    // Chiude il descrittore di lettura della seconda pipe
-                    close(pip2[0]);
-                    memset(buffer, 0, strlen(buffer)); // **** PARTE DI UTILIZZO DI buffer OPZIONALE****
                 }
                 else
                 {
@@ -301,10 +286,10 @@ int main(int argc, char *argv[])
 
 /*
 
-PID1 PID2 PID3 
+PID1 PID2 PID3
 
 pip1 1 to 2
-pip2 2 to 3 
+pip2 2 to 3
 pip3 3 to s
                     if (pid1 == 0)
                     { // Primo figlio (sort)
@@ -314,9 +299,8 @@ pip3 3 to s
                         close(pip1[0]);
                         close(pip2[0]);
                         close(pip2[1]);
+                        close(ns);
 
-                        close(pip3[0]);
-                        close(pip3[1]);
 
                         // Redirige stdout sulla prima pipe:
                         // - Duplica pip1[1] su stdout (fd 1)
@@ -341,8 +325,7 @@ pip3 3 to s
                         // - pip2[0]: non legge dalla seconda pipe
                         close(pip1[1]);
                         close(pip2[0]);
-                        close(pip3[0]);
-                        close(pip3[1]);
+                        close(ns);
 
                         // Redirige stdin dalla prima pipe:
                         // - Duplica pip1[0] su stdin (fd 0)
@@ -370,14 +353,13 @@ pip3 3 to s
                         close(pip1[1]);
                         close(pip1[0]);
                         close(pip2[1]);
-                        close(pip3[0]);
-                        
+
                         dup2(pip2[0],STDIN_FILENO)
                         close(pip2[0]);
 
-                        dup2(pip3[1],STDOUT_FILENO)
-                        close(pip3[1]);
-                    
+                        dup2(ns,STDOUT_FILENO)
+                        close(ns);
+
 
                         // Esegue head con il numero di linee specificato
                         execlp("head", "head", "-n", str2, NULL);
@@ -385,10 +367,9 @@ pip3 3 to s
                         exit(EXIT_FAILURE);
                     }
 
-            NONNO 
-                    while ((bytes_read = read(pip3[0], buffer, sizeof(buffer))) > 0)
-                    {
-                        // Scrive i dati sul socket
-                        ssize_t bytes_written = write_all(ns, buffer, bytes_read);
+            NONNO
+                    write(ns, "\n", 1);
+                    write_all(ns, "===fine===", sizeof("===fine===")); // mando segnale di fine comunicazione
+                    write(ns, "\n", 1);
                     ...
 */

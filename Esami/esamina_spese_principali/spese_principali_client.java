@@ -2,7 +2,7 @@ import java.io.*;
 import java.net.*;
 
 
-public class Main {
+public class spese_principali_client {
     public static void main(String args[]){
         if(args.length != 2){
             System.err.println("Errore! numero di argomenti");

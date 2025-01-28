@@ -1,0 +1,6 @@
+65,2-25-54,45,ferrara,paolobuso,ecc..
+3,2-25-54,45,ferrara,paoloasdrubale,ecc..
+4,2-25-54,45,ferrara,alice,ecc..
+65,2-25-54,45,coma,etilettico,ecc..
+96,2-25-54,45,coma,paolobuso,ecc..
+80,2-25-54,45,coma,paolobuso,ecc..

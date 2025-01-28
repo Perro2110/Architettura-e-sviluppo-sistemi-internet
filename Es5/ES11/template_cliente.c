@@ -1,4 +1,5 @@
-// // gcc -g -o ./eseC client.c rxb.c rxb.h utils.c utils.h
+// xTest => nc -l [nport]
+// gcc -g -o ./eseC client.c rxb.c rxb.h utils.c utils.h
 #define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
 #include <stdlib.h>

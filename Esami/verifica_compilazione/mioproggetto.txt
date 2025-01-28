@@ -1,0 +1,6 @@
+marco,polloversion,20-24-26,positivo
+marco,polloversion,20-24,25,negativo
+marco,galloversion,24-05-56,positivo
+paolo,polloversion,24-25-60,positivo
+paolo,galloversion,24-88888,negativo
+paolo,polloversion,20-24,25,negativo

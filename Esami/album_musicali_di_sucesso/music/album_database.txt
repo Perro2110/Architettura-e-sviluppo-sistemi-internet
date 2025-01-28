@@ -1,0 +1,10 @@
+32,ops sono papà,marco perrotta,luigino disalvo, pompelmo romeo,1965,ecc..
+65,musica34anni,marco perrotta,luigino disalvo, pompelmo romeo,1965,ecc..
+12,i migliori ani della nostra vista,marco perrotta,luigino disalvo, pompelmo romeo,1965,ecc..
+22,cornutone,marco perrotta,luigino disalvo, pompelmo romeo,1965,ecc..
+48,scorzadilimone,marco perrotta, pompelmo romeo,1965,ecc..
+32,helloword,ptn ilpinguino, pompelmo romeo,1965,ecc..
+65,antartide,ptn ilpinguino,luigino disalvo, pompelmo romeo,1965,ecc..
+12,ringostar,ptn ilpinguino,luigino disalvo, pompelmo romeo,1965,ecc..
+22,alleluia,ptn ilpinguino,1965,ecc..
+48,micky,ptn ilpinguino, pompelmo romeo,1965,ecc..

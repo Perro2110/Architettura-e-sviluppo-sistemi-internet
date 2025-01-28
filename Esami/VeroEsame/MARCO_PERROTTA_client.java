@@ -1,10 +1,11 @@
+// MARCO PERROTTA 184789
 import java.io.*;
 import java.net.*;
 
-public class regali_di_natale_client {
+public class MARCO_PERROTTA_client {
     public static void main(String[] args) {
         if (args.length != 2) {
-            System.err.println("Errore di argomenti");
+            System.err.println("Numero argomenti errato !!");
             System.exit(1);
         }
         try (Socket theSocket = new Socket(args[0], Integer.parseInt(args[1]))) {
@@ -13,37 +14,38 @@ public class regali_di_natale_client {
             BufferedWriter networkOut = new BufferedWriter(
                     new OutputStreamWriter(theSocket.getOutputStream(), "UTF-8"));
 
-            // mando al server
             for (;;) {
-                System.out.println("Inserisci nome utente");
-                String nome = userIn.readLine();
-                networkOut.write(nome);
+                String insUtente;
+
+                System.out.println("Inserire nome cliente di interese, 'fine' per terminare");
+                insUtente = userIn.readLine();
+                networkOut.write(insUtente);
                 networkOut.newLine();
                 networkOut.flush();
-                if (nome.equals("fine"))
+                if (insUtente.equals("fine"))
                     break;
 
-                System.out.println("Inserisci password utente");
-                String password = userIn.readLine();
-                networkOut.write(password);
+                System.out.println("Inserire numero N di interese, 'fine' per terminare");
+                insUtente = userIn.readLine();
+                networkOut.write(insUtente);
                 networkOut.newLine();
                 networkOut.flush();
-                if (password.equals("fine"))
+                if (insUtente.equals("fine"))
                     break;
 
-                System.out.println("Inserisci categoria utente");
-                String categoria = userIn.readLine();
-                networkOut.write(categoria);
+                System.out.println("Inserire data di interese, 'fine' per terminare");
+                insUtente = userIn.readLine();
+                networkOut.write(insUtente);
                 networkOut.newLine();
                 networkOut.flush();
-                if (categoria.equals("fine"))
+                if (insUtente.equals("fine"))
                     break;
-
-                // Lettura risultati
+                
                 String theLine;
-                while ((theLine = networkIn.readLine()) != null) {
-                    if (theLine.trim().equals("==fin=="))
-                        break;
+                while((theLine = networkIn.readLine()) != null)
+                {
+                    if(theLine.trim().equals("==fin=="))
+                    break;
                     System.out.println(theLine);
                 }
             }

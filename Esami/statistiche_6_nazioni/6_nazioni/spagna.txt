@@ -1,0 +1,10 @@
+pollos,numeropuntisegnati,2022,5
+pollos,numerofallifatti,2022,99
+pollos,numeropuntisegnati,2020,2
+pollos,numeropuntisegnati,2019,0
+pollos,numerofallifatti,2019,0
+pollos,numeropuntisegnati,2022,5
+gallos,numerofallifatti,2022,99
+gallos,numeropuntisegnati,2020,2
+gallos,numeropuntisegnati,2019,0
+gallos,numerofallifatti,2019,0

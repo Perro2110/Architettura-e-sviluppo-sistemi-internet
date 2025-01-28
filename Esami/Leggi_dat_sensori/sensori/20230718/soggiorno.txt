@@ -1,0 +1,10 @@
+031021556633,pressione,new,45,ecc..
+031021556635,temperatura,new,45,ecc..
+031021556632,pressione,new,45,ecc..
+031021556631,temperatura,new,45,ecc..
+031021556639,pressione,new,45,ecc..
+031021556638,pressione,new,45,ecc..
+031021556637,pressione,new,45,ecc..
+031021556631,temperatura,new,45,ecc..
+031021556639,pressione,new,45,ecc..
+031021556635,temperatura,new,45,ecc..
